@@ -214,3 +214,39 @@ export async function getFields(
     },
   );
 }
+
+/** search_read générique. */
+export async function searchRead<T = Record<string, unknown>>(
+  config: OdooConfig,
+  uid: number,
+  model: string,
+  domain: unknown[] = [],
+  fields: string[] = [],
+  opts: { limit?: number; offset?: number; order?: string } = {},
+): Promise<T[]> {
+  return executeKw<T[]>(config, uid, model, "search_read", [domain], {
+    fields,
+    ...opts,
+  });
+}
+
+/** Crée un enregistrement et renvoie son id. */
+export async function createRecord(
+  config: OdooConfig,
+  uid: number,
+  model: string,
+  values: Record<string, unknown>,
+): Promise<number> {
+  return executeKw<number>(config, uid, model, "create", [values]);
+}
+
+/** Met à jour des enregistrements. */
+export async function writeRecords(
+  config: OdooConfig,
+  uid: number,
+  model: string,
+  ids: number[],
+  values: Record<string, unknown>,
+): Promise<boolean> {
+  return executeKw<boolean>(config, uid, model, "write", [ids, values]);
+}
