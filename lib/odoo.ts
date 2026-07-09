@@ -175,3 +175,42 @@ export async function executeKw<T>(
     kwargs,
   ]);
 }
+
+export interface OdooFieldMeta {
+  string?: string;
+  type?: string;
+  relation?: string;
+  relation_field?: string;
+  required?: boolean;
+  readonly?: boolean;
+  selection?: [string, string][];
+}
+
+/**
+ * Récupère la description des champs d'un modèle (fields_get).
+ * Lecture seule — sert à l'introspection du schéma Odoo.
+ */
+export async function getFields(
+  config: OdooConfig,
+  uid: number,
+  model: string,
+): Promise<Record<string, OdooFieldMeta>> {
+  return executeKw<Record<string, OdooFieldMeta>>(
+    config,
+    uid,
+    model,
+    "fields_get",
+    [],
+    {
+      attributes: [
+        "string",
+        "type",
+        "relation",
+        "relation_field",
+        "required",
+        "readonly",
+        "selection",
+      ],
+    },
+  );
+}
