@@ -52,12 +52,24 @@ export function getOdooConfig(): OdooConfig {
     );
   }
 
+  // On retire les espaces / retours à la ligne parasites (fréquents lors
+  // d'un copier-coller dans les variables d'environnement Vercel).
   return {
-    url: url!.replace(/\/+$/, ""),
-    db: db!,
-    username: username!,
-    apiKey: apiKey!,
+    url: url!.trim().replace(/\/+$/, ""),
+    db: db!.trim(),
+    username: username!.trim(),
+    apiKey: apiKey!.trim(),
   };
+}
+
+/**
+ * Liste les bases de données disponibles sur l'instance Odoo.
+ * Utile pour diagnostiquer un mauvais ODOO_DB. Peut être désactivé
+ * côté serveur (list_db = False) : dans ce cas la promesse rejette.
+ */
+export async function listDatabases(config: OdooConfig): Promise<string[]> {
+  const dbs = await jsonRpc<string[]>(config.url, "db", "list", []);
+  return Array.isArray(dbs) ? dbs : [];
 }
 
 async function jsonRpc<T>(

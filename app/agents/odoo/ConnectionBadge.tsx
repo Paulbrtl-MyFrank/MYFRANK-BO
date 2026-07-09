@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 
 interface StatusResponse {
   connected: boolean;
+  stage?: "config" | "reachability" | "auth";
   uid?: number;
   serverVersion?: string | null;
   instance?: string;
   database?: string;
   user?: string;
   error?: string;
+  availableDatabases?: string[] | null;
+  databaseKnown?: boolean | null;
 }
 
 export default function ConnectionBadge() {
@@ -87,10 +90,47 @@ export default function ConnectionBadge() {
       )}
 
       {!loading && !status?.connected && (
-        <p className="mt-3 text-xs text-rose-300/80">
-          {status?.error ??
-            "Vérifiez les variables d'environnement Odoo sur Vercel."}
-        </p>
+        <div className="mt-3 space-y-2 text-xs">
+          <p className="text-rose-300/80">
+            {status?.error ??
+              "Vérifiez les variables d'environnement Odoo sur Vercel."}
+          </p>
+
+          {/* Diagnostic quand le serveur répond mais l'auth échoue */}
+          {status?.stage === "auth" && (
+            <div className="space-y-1.5 rounded-lg border border-white/10 bg-black/20 p-2.5 text-white/55">
+              <p>
+                <span className="text-emerald-300/80">✓ Serveur joignable</span>
+                {status.serverVersion ? ` (v${status.serverVersion})` : ""} — le
+                problème vient des identifiants ou du nom de la base.
+              </p>
+              <p>
+                Base demandée : <code className="text-white/80">{status.database}</code>{" "}
+                {status.databaseKnown === false && (
+                  <span className="text-rose-300/80">
+                    — introuvable sur ce serveur.
+                  </span>
+                )}
+                {status.databaseKnown === true && (
+                  <span className="text-emerald-300/80">— existe bien.</span>
+                )}
+              </p>
+              {status.availableDatabases &&
+                status.availableDatabases.length > 0 && (
+                  <p>
+                    Bases disponibles :{" "}
+                    <span className="text-white/80">
+                      {status.availableDatabases.join(", ")}
+                    </span>
+                  </p>
+                )}
+              <p className="text-white/40">
+                Si la base est correcte, vérifiez ODOO_USERNAME et surtout
+                ODOO_API_KEY (une clé régénérée invalide l’ancienne).
+              </p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
