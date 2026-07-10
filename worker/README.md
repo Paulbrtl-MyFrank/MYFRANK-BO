@@ -54,6 +54,7 @@ Choisis une plateforme always-on. Deux options :
 | `WORKER_SECRET` | Secret protégeant l'endpoint (identique côté Vercel) |
 | `CLAUDE_CODE_OAUTH_TOKEN` | Token du plan Claude (étape 1) |
 | `AGENT_MODEL` | Modèle de rédaction (défaut `claude-sonnet-5`) |
+| `AGENT_STYLE` | Consignes de style libres (optionnel) — voir « Personnaliser le style » |
 | `ODOO_URL` / `ODOO_DB` / `ODOO_USERNAME` / `ODOO_API_KEY` | Connexion Odoo (mêmes valeurs que Vercel) |
 | `PORT` | Injecté par la plateforme |
 
@@ -76,6 +77,23 @@ Le cron quotidien (`vercel.json`) appelle alors le worker automatiquement.
   https://<worker>/agents/followup/run?dryRun=1&limit=2&token=<WORKER_SECRET>
   ```
 - **Écriture réelle** : remplace par `?commit=1&limit=2&token=<WORKER_SECRET>`
+
+## Personnaliser le style des e-mails
+
+Le ton, la signature, le nombre de mails, la cadence, le tutoiement/vouvoiement…
+se règlent sans toucher au code, via la variable **`AGENT_STYLE`** (dashboard
+Render → Environment) : écris tes consignes en français, elles sont ajoutées au
+prompt et prioritaires. Exemple :
+
+```
+Tutoie toujours le prospect (jamais de vouvoiement).
+Signe « Paul — MyFrank ».
+3 mails maximum, espacés sur ~10 jours.
+Ton direct, chaleureux, phrases courtes ; pas de superlatifs.
+```
+
+Après modification de la variable, Render redéploie automatiquement (~2 min),
+puis re-teste en dry-run.
 
 ## Endpoints
 
