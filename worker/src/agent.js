@@ -120,13 +120,18 @@ export async function generateFollowupSequence(context, styleOverride) {
   }
 
   const emails = parsed.emails
-    .map((e) => ({
-      subject: String(e.subject || "").trim(),
-      body_html: String(e.body_html || "").trim(),
-      send_offset_days: Number.isFinite(e.send_offset_days)
-        ? Math.max(0, Math.trunc(e.send_offset_days))
-        : 0,
-    }))
+    .map((e) => {
+      // Le modèle renvoie parfois send_offset_days en texte ("3") : on
+      // convertit explicitement en nombre avant de valider.
+      const offset = Number(e.send_offset_days);
+      return {
+        subject: String(e.subject || "").trim(),
+        body_html: String(e.body_html || "").trim(),
+        send_offset_days: Number.isFinite(offset)
+          ? Math.max(0, Math.trunc(offset))
+          : 0,
+      };
+    })
     .filter((e) => e.subject && e.body_html)
     .sort((a, b) => a.send_offset_days - b.send_offset_days);
 
