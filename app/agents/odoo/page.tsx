@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Chat from "./Chat";
 import ConnectionBadge from "./ConnectionBadge";
 import AgentTabs from "./AgentTabs";
 
@@ -23,8 +22,8 @@ export default function OdooAgentPage() {
         </div>
         <h1 className="text-3xl font-semibold tracking-tight">Agent CRM Odoo</h1>
         <p className="mt-2 text-white/55">
-          Assistant relié au CRM Odoo de MyFrank. Périmètre actuel : connexion
-          établie, conversation active, aucune action métier encore branchée.
+          Assistant relié au CRM Odoo de MyFrank. Rédige les séquences de relance
+          (Auto Follow-up) à partir du contexte des opportunités.
         </p>
       </header>
 
@@ -32,11 +31,7 @@ export default function OdooAgentPage() {
         <ConnectionBadge />
       </div>
 
-      <div className="mb-6">
-        <AgentTabs />
-      </div>
-
-      <Chat />
+      <AgentTabs />
     </main>
   );
 }
