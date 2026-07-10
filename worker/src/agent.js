@@ -56,7 +56,9 @@ export async function generateFollowupSequence(context) {
       systemPrompt: SYSTEM_PROMPT,
       model: process.env.AGENT_MODEL || "claude-sonnet-5",
       allowedTools: [], // pas d'outils : simple génération de texte
-      maxTurns: 1,
+      // Marge de tours (le SDK compte l'échange complet). Sans outils, la
+      // génération tient en un tour ; ce plafond évite l'erreur "max turns".
+      maxTurns: 6,
       // On ne charge aucune config locale (CLAUDE.md, settings…).
       settingSources: [],
     },
