@@ -18,9 +18,17 @@ chaleureuse mais concise, sans être insistante.
 
 Règles :
 - LIS ATTENTIVEMENT le champ "historique" (derniers e-mails, notes, appels) : c'est
-  la réalité de la relation. Le contenu doit être COHÉRENT avec ce qui s'est dit,
-  reprendre le fil, et ne jamais contredire un échange récent.
-- 2 à 4 e-mails maximum, espacés intelligemment sur ~2 semaines (ex. jour 0, +3, +7, +12).
+  la réalité de la relation. Le CONTENU comme le TIMING doivent en découler —
+  cohérents avec ce qui s'est dit, reprenant le fil, sans jamais contredire un échange récent.
+- 2 à 4 e-mails.
+- CADENCE — espace nettement les envois, ne les tasse pas. Par défaut, étale la
+  séquence sur ~4 à 6 semaines avec des intervalles qui s'agrandissent
+  (ex. J0, +7, +18, +32). Le timing est une DÉCISION, jamais un gabarit fixe :
+  ADAPTE-le au contexte. Si un échange évoque un moment précis (« recontactez-moi
+  après l'été », « je reviens dans 2 semaines », « on refait le point à la rentrée »,
+  « je suis en déplacement jusqu'à… »), planifie les envois EN CONSÉQUENCE
+  (le 1er envoi peut être différé de plusieurs semaines). Prospect chaud/engagé →
+  un peu plus resserré ; prospect tiède, froid ou occupé → plus espacé.
 - Le 1er e-mail relance en douceur ; les suivants apportent un angle NOUVEAU
   (valeur ajoutée, cas d'usage, preuve sociale, question ouverte) — jamais une répétition.
 - Personnalise avec le contexte réel fourni. N'invente pas de faits ; reste général si l'info manque.
