@@ -1,0 +1,36 @@
+name: Keep worker warm
+
+# Le worker (Agent 1) tourne sur Render en offre gratuite : il se met en veille
+# après ~15 min d'inactivité et met ~30-60 s à redémarrer à froid, ce qui fait
+# échouer le 1er appel ("Worker injoignable, il se réveille"). Ce ping régulier
+# sur /health le maintient éveillé pendant les heures d'utilisation.
+#
+# Fenêtre 6h-21h UTC (≈ 8h-23h Paris) pour rester largement sous le quota
+# gratuit Render (~750 h/mois). Hors de cette plage le worker peut dormir.
+
+on:
+  schedule:
+    - cron: "*/10 6-21 * * *"
+  workflow_dispatch: {}
+
+# Un seul ping à la fois ; on annule un run précédent encore en cours.
+concurrency:
+  group: keep-worker-warm
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping worker /health
+        env:
+          # Surcouche possible via une "repository variable" WORKER_URL ;
+          # sinon on utilise l'URL Render publique par défaut.
+          WORKER_URL: ${{ vars.WORKER_URL || 'https://myfrank-bo.onrender.com' }}
+        run: |
+          url="${WORKER_URL%/}/health"
+          echo "Ping $url"
+          # --max-time 90 : laisse le temps au réveil à froid de Render.
+          # On ne fait pas échouer le job si le worker met du temps : le but
+          # est juste de le réveiller.
+          curl -sS --max-time 90 --retry 3 --retry-all-errors "$url" || true
