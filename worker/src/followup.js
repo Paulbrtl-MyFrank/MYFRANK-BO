@@ -43,8 +43,12 @@ const LEAD_CONTEXT_FIELDS = [
   "x_studio_premier_contact",
   "x_studio_dernier_contact",
   "x_studio_note_moyenne",
+  "x_studio_transcript_visio",
   "description",
 ];
+
+// Longueur max du transcript de démo injecté dans le contexte (évite un prompt géant).
+const TRANSCRIPT_MAX = 5000;
 
 const SEND_HOUR_UTC = 7; // ~9h Paris
 
@@ -152,6 +156,15 @@ export async function runFollowupPlanner(opts = {}) {
 
     // Historique des échanges (emails/notes) pour un contexte réaliste.
     const historique = await fetchHistory(config, uid, lead.id);
+
+    // Le transcript de démo peut être volumineux : on le borne.
+    if (
+      typeof lead.x_studio_transcript_visio === "string" &&
+      lead.x_studio_transcript_visio.length > TRANSCRIPT_MAX
+    ) {
+      lead.x_studio_transcript_visio =
+        lead.x_studio_transcript_visio.slice(0, TRANSCRIPT_MAX) + " […]";
+    }
 
     const { id: _id, name, ...context } = lead;
     const sequence = await generateFollowupSequence(
