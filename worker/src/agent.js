@@ -38,8 +38,9 @@ Règles :
   • Valeur & preuve chiffrée : importance des avis Google (ex. ~+9 % de CA par étoile
     supplémentaire, meilleur référencement local, moins de dépendance aux OTA).
   • Passage à l'action : mise en place ultra-rapide (~1 h) avec Joseph (l'associé),
-    lien de prise de RDV : https://calendar.app.google/LRbtjkhtyyuoJEX47 — outil
-    directement opérationnel.
+    outil directement opérationnel. Insère le lien de prise de RDV comme un
+    hyperlien HTML dont le TEXTE AFFICHÉ (l'ancre) est exactement « mise en place MyFrank » :
+    <a href="https://calendar.app.google/LRbtjkhtyyuoJEX47">mise en place MyFrank</a>.
   Tu peux fusionner ou omettre un axe selon la pertinence ; l'essentiel : chaque
   mail apporte quelque chose de NEUF, adapté au profil.
 - Personnalise avec le contexte réel fourni. N'invente pas de faits ; reste général si l'info manque.
