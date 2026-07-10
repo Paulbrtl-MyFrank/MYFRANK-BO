@@ -67,6 +67,52 @@ async function hasActiveSequence(config, uid, leadId) {
   return rows.length > 0;
 }
 
+/** Convertit un corps HTML de message Odoo en texte lisible. */
+function stripHtml(html) {
+  return String(html || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li)>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#39;|&rsquo;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * Récupère l'historique des échanges (chatter) d'une opportunité : e-mails et
+ * notes, en ordre chronologique, pour que l'agent tienne compte de la relation.
+ */
+async function fetchHistory(config, uid, leadId) {
+  const rows = await searchRead(
+    config,
+    uid,
+    "mail.message",
+    [
+      ["model", "=", LEAD_MODEL],
+      ["res_id", "=", leadId],
+      ["message_type", "in", ["email", "comment"]],
+    ],
+    ["date", "author_id", "email_from", "subject", "body"],
+    { limit: 12, order: "date desc" },
+  ).catch(() => []);
+
+  return rows
+    .reverse() // ancien -> récent
+    .map((m) => ({
+      date: m.date,
+      de: Array.isArray(m.author_id) ? m.author_id[1] : m.email_from || "",
+      sujet: m.subject || "",
+      message: stripHtml(m.body).slice(0, 800),
+    }))
+    .filter((m) => m.message);
+}
+
 /**
  * @param {{ dryRun?: boolean, limit?: number }} opts
  */
@@ -104,11 +150,26 @@ export async function runFollowupPlanner(opts = {}) {
       continue;
     }
 
+    // Historique des échanges (emails/notes) pour un contexte réaliste.
+    const historique = await fetchHistory(config, uid, lead.id);
+
     const { id: _id, name, ...context } = lead;
     const sequence = await generateFollowupSequence(
-      { opportunite: name, ...context },
+      { opportunite: name, ...context, historique },
       style,
     );
+
+    // L'agent peut décider de ne pas relancer (refus, prospect qui décline…).
+    if (sequence.skip) {
+      skipped++;
+      results.push({
+        leadId: lead.id,
+        name,
+        status: "skipped_declined",
+        reason: sequence.reason || "",
+      });
+      continue;
+    }
 
     const now = new Date();
     const destinataire = Array.isArray(lead.partner_id) ? lead.partner_id[0] : false;

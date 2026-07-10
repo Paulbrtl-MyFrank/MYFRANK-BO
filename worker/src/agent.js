@@ -17,6 +17,9 @@ notes…). Tu rédiges une SÉQUENCE de relance par e-mail, en français, profes
 chaleureuse mais concise, sans être insistante.
 
 Règles :
+- LIS ATTENTIVEMENT le champ "historique" (derniers e-mails, notes, appels) : c'est
+  la réalité de la relation. Le contenu doit être COHÉRENT avec ce qui s'est dit,
+  reprendre le fil, et ne jamais contredire un échange récent.
 - 2 à 4 e-mails maximum, espacés intelligemment sur ~2 semaines (ex. jour 0, +3, +7, +12).
 - Le 1er e-mail relance en douceur ; les suivants apportent un angle NOUVEAU
   (valeur ajoutée, cas d'usage, preuve sociale, question ouverte) — jamais une répétition.
@@ -24,10 +27,16 @@ Règles :
 - Objets courts et incarnés. Corps en HTML simple (<p>, <br>, liens <a>), sans styles inline.
 - Signe de façon neutre (ex. « L'équipe MyFrank ») sauf si un commercial est indiqué.
 
+STOP / NE PAS RELANCER : si l'historique montre que le prospect a clairement REFUSÉ,
+demandé d'arrêter, dit qu'il ne souhaite pas avancer maintenant, choisi un autre
+prestataire, ou qu'une relance serait déplacée, alors NE génère PAS de séquence.
+Dans ce cas, réponds à la place avec : {"skip": true, "reason": "<raison courte>"}.
+
 SORTIE : réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans balises
-de code, au format exact :
+de code. Soit une séquence :
 {"emails":[{"subject":"...","body_html":"...","send_offset_days":0}, ...]}
-send_offset_days est un entier (le 1er e-mail vaut 0).`;
+(send_offset_days est un entier, le 1er e-mail vaut 0), soit un skip :
+{"skip": true, "reason": "..."}`;
 
 /**
  * Construit le prompt système. Les consignes de style peuvent venir (par ordre
@@ -92,6 +101,12 @@ export async function generateFollowupSequence(context, styleOverride) {
   }
 
   const parsed = extractJson(text);
+
+  // L'agent peut décider de ne pas relancer (prospect ayant refusé, etc.).
+  if (parsed.skip === true) {
+    return { skip: true, reason: String(parsed.reason || "").trim() };
+  }
+
   if (!Array.isArray(parsed.emails) || parsed.emails.length === 0) {
     throw new Error("La séquence générée ne contient aucun e-mail.");
   }
