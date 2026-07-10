@@ -56,19 +56,29 @@ function odooDatetime(d) {
   return d.toISOString().slice(0, 19).replace("T", " ");
 }
 
-async function hasActiveSequence(config, uid, leadId) {
+/**
+ * Renvoie l'ensemble des ids de leads (parmi ceux fournis) qui ont déjà une
+ * séquence active (statut planifie/envoye). Une seule requête groupée plutôt
+ * qu'un appel par lead.
+ */
+async function leadsWithActiveSequence(config, uid, leadIds) {
+  if (!leadIds.length) return new Set();
   const rows = await searchRead(
     config,
     uid,
     SCHEDULE_MODEL,
     [
-      ["x_lead_id", "=", leadId],
+      ["x_lead_id", "in", leadIds],
       [STATUS_FIELD, "in", STATUS_ACTIVE],
     ],
-    ["id"],
-    { limit: 1 },
+    ["x_lead_id"],
+    { limit: 2000 },
   );
-  return rows.length > 0;
+  const withSeq = new Set();
+  for (const r of rows) {
+    if (Array.isArray(r.x_lead_id)) withSeq.add(r.x_lead_id[0]);
+  }
+  return withSeq;
 }
 
 /** Convertit un corps HTML de message Odoo en texte lisible. */
@@ -134,26 +144,35 @@ export async function runFollowupPlanner(opts = {}) {
   // Consignes de style éditées depuis le front Vercel (stockées dans Odoo).
   const style = await getConfigParam(config, uid, STYLE_PARAM_KEY).catch(() => "");
 
-  const leads = await searchRead(
+  // On récupère un vivier large d'opportunités en Auto Follow-up, puis on
+  // écarte d'un coup celles qui ont déjà une séquence. On ne borne PAS la
+  // requête Odoo par `limit` : sinon, avec limit=1 (prévisualisation), on ne
+  // verrait que l'opportunité la plus récente — souvent déjà séquencée — et on
+  // n'atteindrait jamais celles qui ont réellement besoin d'une relance.
+  const pool = await searchRead(
     config,
     uid,
     LEAD_MODEL,
     [[MODE_FIELD, "=", MODE_AUTO_FOLLOWUP]],
     contextFields,
-    { limit, order: "create_date desc" },
+    { limit: 200, order: "create_date desc" },
   );
+
+  const sequenced = await leadsWithActiveSequence(
+    config,
+    uid,
+    pool.map((l) => l.id),
+  );
+
+  // Candidats = opportunités sans séquence active. On n'en traite que `limit`.
+  const candidates = pool.filter((l) => !sequenced.has(l.id));
+  const leads = candidates.slice(0, limit);
 
   const results = [];
   let planned = 0;
-  let skipped = 0;
+  let skipped = sequenced.size;
 
   for (const lead of leads) {
-    if (await hasActiveSequence(config, uid, lead.id)) {
-      skipped++;
-      results.push({ leadId: lead.id, name: lead.name, status: "skipped_has_sequence" });
-      continue;
-    }
-
     // Historique des échanges (emails/notes) pour un contexte réaliste.
     const historique = await fetchHistory(config, uid, lead.id);
 
@@ -228,7 +247,8 @@ export async function runFollowupPlanner(opts = {}) {
   return {
     ok: true,
     mode: dryRun ? "dry-run" : "commit",
-    leadsScanned: leads.length,
+    leadsScanned: pool.length,
+    candidates: candidates.length,
     sequencesPlanned: planned,
     skipped,
     results,
