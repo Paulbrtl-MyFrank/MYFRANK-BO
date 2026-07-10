@@ -10,6 +10,8 @@ interface Email {
 interface Result {
   name?: string;
   emails?: Email[];
+  status?: string;
+  reason?: string;
 }
 
 export default function PreviewPanel() {
@@ -27,17 +29,18 @@ export default function PreviewPanel() {
       });
       const data = await res.json();
       if (data.ok) {
-        const withEmails = (data.results || []).filter(
-          (r: Result) => r.emails && r.emails.length,
+        const relevant = (data.results || []).filter(
+          (r: Result) =>
+            (r.emails && r.emails.length) || r.status === "skipped_declined",
         );
-        if (withEmails.length === 0) {
+        if (relevant.length === 0) {
           setError(
             data.leadsScanned === 0
               ? "Aucune opportunité en Auto Follow-up à prévisualiser."
               : "Rien à prévisualiser (les opportunités ont déjà une séquence).",
           );
         } else {
-          setResults(withEmails);
+          setResults(relevant);
         }
       } else {
         setError(data.error || "Échec de la prévisualisation.");
@@ -77,8 +80,16 @@ export default function PreviewPanel() {
               <div className="mb-2 text-xs uppercase tracking-wide text-white/40">
                 {r.name}
               </div>
-              <div className="space-y-3">
-                {r.emails!.map((email, j) => (
+              {r.status === "skipped_declined" ? (
+                <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-200/90">
+                  ⏸️ Pas de relance générée.
+                  {r.reason ? (
+                    <span className="text-amber-200/70"> {r.reason}</span>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {r.emails!.map((email, j) => (
                   <div
                     key={j}
                     className="rounded-xl border border-white/10 bg-black/20 p-4"
@@ -97,9 +108,10 @@ export default function PreviewPanel() {
                       className="preview-body text-sm leading-relaxed text-white/70"
                       dangerouslySetInnerHTML={{ __html: email.body_html }}
                     />
-                  </div>
-                ))}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
