@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import StylePanel from "./StylePanel";
+import PreviewPanel from "./PreviewPanel";
 import LeadsList from "./LeadsList";
 
 type Tab = "followup" | "nurture";
@@ -38,6 +39,7 @@ export default function AgentTabs() {
       {tab === "followup" && (
         <div className="space-y-4">
           <StylePanel />
+          <PreviewPanel />
           <LeadsList />
         </div>
       )}

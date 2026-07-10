@@ -26,3 +26,15 @@ body {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 999px;
 }
+
+/* Rendu des corps d'e-mail prévisualisés (HTML généré) */
+.preview-body p {
+  margin: 0 0 0.6rem;
+}
+.preview-body p:last-child {
+  margin-bottom: 0;
+}
+.preview-body a {
+  color: #c4b5fd;
+  text-decoration: underline;
+}
