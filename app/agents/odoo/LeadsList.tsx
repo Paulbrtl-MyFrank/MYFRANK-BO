@@ -9,17 +9,10 @@ interface Lead {
   hasSequence: boolean;
 }
 
-interface GenEmail {
-  subject: string;
-  body_html: string;
-  send_offset_days: number;
-}
-
 interface GenState {
   loading?: boolean;
   error?: string;
   skippedReason?: string;
-  emails?: GenEmail[];
 }
 
 export default function LeadsList() {
@@ -86,19 +79,12 @@ export default function LeadsList() {
         return;
       }
 
-      // Séquence écrite (ou l'opportunité avait déjà une séquence).
-      if (result?.emails?.length) {
-        setGen((g) => ({ ...g, [leadId]: { emails: result.emails } }));
-        setLeads((ls) =>
-          ls.map((l) => (l.id === leadId ? { ...l, hasSequence: true } : l)),
-        );
-      } else {
-        // Aucun candidat traité : la fiche avait déjà une séquence active.
-        setGen((g) => ({ ...g, [leadId]: {} }));
-        setLeads((ls) =>
-          ls.map((l) => (l.id === leadId ? { ...l, hasSequence: true } : l)),
-        );
-      }
+      // Séquence écrite (ou l'opportunité avait déjà une séquence) : on se
+      // contente de basculer le badge à « séquence ✓ », sans détailler.
+      setGen((g) => ({ ...g, [leadId]: {} }));
+      setLeads((ls) =>
+        ls.map((l) => (l.id === leadId ? { ...l, hasSequence: true } : l)),
+      );
     } catch {
       setGen((g) => ({
         ...g,
@@ -204,29 +190,6 @@ export default function LeadsList() {
                     <span className="text-amber-200/70">
                       {state.skippedReason}
                     </span>
-                  </div>
-                )}
-                {state.emails && state.emails.length > 0 && (
-                  <div className="mt-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3">
-                    <div className="mb-2 text-xs text-emerald-300">
-                      ✓ Séquence de {state.emails.length} e-mail
-                      {state.emails.length > 1 ? "s" : ""} écrite dans Odoo.
-                    </div>
-                    <ul className="space-y-1">
-                      {state.emails.map((e, j) => (
-                        <li
-                          key={j}
-                          className="flex items-center justify-between gap-3 text-xs text-white/70"
-                        >
-                          <span className="truncate">{e.subject}</span>
-                          <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/50">
-                            {e.send_offset_days === 0
-                              ? "Jour 0"
-                              : `J+${e.send_offset_days}`}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
                 )}
               </li>
