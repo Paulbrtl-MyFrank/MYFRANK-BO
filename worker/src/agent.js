@@ -40,11 +40,15 @@ Règles :
   • Passage à l'action : mise en place ultra-rapide (~1 h) avec Joseph (l'associé),
     outil directement opérationnel. Insère le lien de prise de RDV comme un
     hyperlien HTML dont le TEXTE AFFICHÉ (l'ancre) est exactement « mise en place MyFrank » :
-    <a href="https://calendar.app.google/LRbtjkhtyyuoJEX47">mise en place MyFrank</a>.
+    <a href='https://calendar.app.google/LRbtjkhtyyuoJEX47'>mise en place MyFrank</a>.
   Tu peux fusionner ou omettre un axe selon la pertinence ; l'essentiel : chaque
   mail apporte quelque chose de NEUF, adapté au profil.
 - Personnalise avec le contexte réel fourni. N'invente pas de faits ; reste général si l'info manque.
 - Objets courts et incarnés. Corps en HTML simple (<p>, <br>, liens <a>), sans styles inline.
+- IMPORTANT (validité JSON) : dans les attributs HTML, utilise TOUJOURS des guillemets
+  SIMPLES (ex. <a href='...'>), JAMAIS de guillemets doubles. N'insère aucun retour à la
+  ligne littéral à l'intérieur d'une valeur JSON : tout le body_html tient sur une seule
+  ligne (utilise des balises <p>/<br>, pas de saut de ligne réel).
 - Signe de façon neutre (ex. « L'équipe MyFrank ») sauf si un commercial est indiqué.
 
 STOP / NE PAS RELANCER : si l'historique montre que le prospect a clairement REFUSÉ,
@@ -87,15 +91,21 @@ function extractJson(text) {
   if (start === -1 || end === -1 || end < start) {
     throw new Error("Aucun JSON trouvé dans la réponse du modèle.");
   }
-  return JSON.parse(s.slice(start, end + 1));
+  const slice = s.slice(start, end + 1);
+  try {
+    return JSON.parse(slice);
+  } catch (err) {
+    // Réparation tolérante : le modèle insère parfois de VRAIS retours à la
+    // ligne (ou tabulations) à l'intérieur d'une valeur de chaîne, ce qui est
+    // interdit en JSON. Hors chaîne ils sont insignifiants ; dans une chaîne
+    // ils sont illégaux. On les remplace donc par une espace pour parser.
+    const repaired = slice.replace(/[\n\r\t]+/g, " ");
+    return JSON.parse(repaired);
+  }
 }
 
-export async function generateFollowupSequence(context, styleOverride) {
-  const prompt =
-    "Contexte de l'opportunité (JSON) :\n\n" +
-    JSON.stringify(context, null, 2) +
-    "\n\nRédige la séquence et renvoie UNIQUEMENT le JSON demandé.";
-
+/** Un tour de génération : interroge le modèle et renvoie le texte brut. */
+async function runQuery(prompt, styleOverride) {
   let text = "";
   for await (const message of query({
     prompt,
@@ -119,8 +129,43 @@ export async function generateFollowupSequence(context, styleOverride) {
       text = message.result;
     }
   }
+  return text;
+}
 
-  const parsed = extractJson(text);
+export async function generateFollowupSequence(context, styleOverride) {
+  const basePrompt =
+    "Contexte de l'opportunité (JSON) :\n\n" +
+    JSON.stringify(context, null, 2) +
+    "\n\nRédige la séquence et renvoie UNIQUEMENT le JSON demandé.";
+
+  // Le modèle produit parfois un JSON invalide (guillemets HTML non échappés,
+  // retour à la ligne dans une chaîne…). On réessaie quelques fois, en
+  // rappelant la contrainte de format au 2e essai.
+  let parsed;
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const prompt =
+      attempt === 0
+        ? basePrompt
+        : basePrompt +
+          "\n\nATTENTION : ta réponse précédente n'était pas un JSON valide. " +
+          "Renvoie STRICTEMENT un objet JSON valide, sur une seule ligne, avec " +
+          "des guillemets SIMPLES dans le HTML et aucun retour à la ligne réel " +
+          "dans les chaînes.";
+    try {
+      const text = await runQuery(prompt, styleOverride);
+      parsed = extractJson(text);
+      break;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (!parsed) {
+    throw new Error(
+      "Réponse du modèle illisible après plusieurs tentatives : " +
+        (lastErr?.message || "JSON invalide."),
+    );
+  }
 
   // L'agent peut décider de ne pas relancer (prospect ayant refusé, etc.).
   if (parsed.skip === true) {
