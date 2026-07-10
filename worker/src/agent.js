@@ -29,6 +29,21 @@ de code, au format exact :
 {"emails":[{"subject":"...","body_html":"...","send_offset_days":0}, ...]}
 send_offset_days est un entier (le 1er e-mail vaut 0).`;
 
+/**
+ * Construit le prompt système. Si la variable d'environnement AGENT_STYLE est
+ * définie (dans le dashboard Render), ses consignes sont ajoutées et
+ * PRIORITAIRES — c'est le levier de personnalisation du style sans toucher au code.
+ */
+function buildSystemPrompt() {
+  const style = process.env.AGENT_STYLE?.trim();
+  if (!style) return SYSTEM_PROMPT;
+  return (
+    SYSTEM_PROMPT +
+    "\n\n=== CONSIGNES DE STYLE SPÉCIFIQUES (PRIORITAIRES sur les règles ci-dessus) ===\n" +
+    style
+  );
+}
+
 /** Extrait le premier objet JSON d'une chaîne (tolère les ``` et le texte autour). */
 function extractJson(text) {
   if (!text) throw new Error("Réponse vide du modèle.");
@@ -53,7 +68,7 @@ export async function generateFollowupSequence(context) {
   for await (const message of query({
     prompt,
     options: {
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: buildSystemPrompt(),
       model: process.env.AGENT_MODEL || "claude-sonnet-5",
       allowedTools: [], // pas d'outils : simple génération de texte
       // Marge de tours (le SDK compte l'échange complet). Sans outils, la
