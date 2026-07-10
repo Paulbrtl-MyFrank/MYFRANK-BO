@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   authenticate,
   createRecord,
+  getFields,
   getOdooConfig,
   searchRead,
   type OdooConfig,
@@ -19,23 +20,28 @@ const MODE_AUTO_FOLLOWUP = "F";
 const STATUS_FIELD = "x_studio_statut_envoi";
 const STATUS_ACTIVE = ["planifie", "envoye"]; // séquence considérée existante
 
-// Champs de contexte lus sur l'opportunité pour nourrir la rédaction.
+// Champs de contexte souhaités pour nourrir la rédaction. On les filtre au
+// runtime contre les champs réellement présents sur le modèle (les noms des
+// champs Studio varient), donc un nom inexistant est simplement ignoré.
 const LEAD_CONTEXT_FIELDS = [
   "name",
   "contact_name",
   "partner_name",
   "email_from",
   "partner_id",
-  "x_studio_prenom",
+  "x_studio_prnom",
   "x_studio_nom",
   "x_studio_mail",
   "x_studio_job_title",
   "x_studio_secteur",
   "x_studio_linkedin_company",
+  "x_studio_lk_company",
   "x_studio_statut",
+  "x_studio_engagement",
   "x_studio_features_demandes_et_notes",
   "x_studio_premier_contact",
   "x_studio_dernier_contact",
+  "x_studio_note_moyenne",
   "description",
 ];
 
@@ -105,13 +111,22 @@ async function handle(req: Request) {
     const config = getOdooConfig();
     const uid = await authenticate(config);
 
+    // 0) On ne lit que les champs de contexte réellement présents sur le
+    //    modèle (les noms des champs Studio varient d'une base à l'autre).
+    const leadFieldSet = new Set(
+      Object.keys(await getFields(config, uid, LEAD_MODEL)),
+    );
+    const contextFields = LEAD_CONTEXT_FIELDS.filter((f) =>
+      leadFieldSet.has(f),
+    );
+
     // 1) Opportunités en Auto Follow-up
     const leads = await searchRead<Lead>(
       config,
       uid,
       LEAD_MODEL,
       [[MODE_FIELD, "=", MODE_AUTO_FOLLOWUP]],
-      LEAD_CONTEXT_FIELDS,
+      contextFields,
       { limit, order: "create_date desc" },
     );
 
