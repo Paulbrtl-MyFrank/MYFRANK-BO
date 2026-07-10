@@ -9,11 +9,26 @@ interface Lead {
   hasSequence: boolean;
 }
 
+interface GenEmail {
+  subject: string;
+  body_html: string;
+  send_offset_days: number;
+}
+
+interface GenState {
+  loading?: boolean;
+  error?: string;
+  skippedReason?: string;
+  emails?: GenEmail[];
+}
+
 export default function LeadsList() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [instance, setInstance] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // État de génération par opportunité (leadId -> état).
+  const [gen, setGen] = useState<Record<number, GenState>>({});
 
   async function load() {
     setLoading(true);
@@ -39,6 +54,58 @@ export default function LeadsList() {
   useEffect(() => {
     load();
   }, []);
+
+  async function generate(leadId: number) {
+    setGen((g) => ({ ...g, [leadId]: { loading: true } }));
+    try {
+      const res = await fetch("/api/agents/followup/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ leadId }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setGen((g) => ({
+          ...g,
+          [leadId]: { error: data.error || "Échec de la génération." },
+        }));
+        return;
+      }
+      const result = (data.results || []).find(
+        (r: { leadId: number }) => r.leadId === leadId,
+      );
+
+      // L'agent a décidé de ne pas relancer (prospect qui a décliné, etc.).
+      if (result?.status === "skipped_declined") {
+        setGen((g) => ({
+          ...g,
+          [leadId]: {
+            skippedReason: result.reason || "Relance jugée non pertinente.",
+          },
+        }));
+        return;
+      }
+
+      // Séquence écrite (ou l'opportunité avait déjà une séquence).
+      if (result?.emails?.length) {
+        setGen((g) => ({ ...g, [leadId]: { emails: result.emails } }));
+        setLeads((ls) =>
+          ls.map((l) => (l.id === leadId ? { ...l, hasSequence: true } : l)),
+        );
+      } else {
+        // Aucun candidat traité : la fiche avait déjà une séquence active.
+        setGen((g) => ({ ...g, [leadId]: {} }));
+        setLeads((ls) =>
+          ls.map((l) => (l.id === leadId ? { ...l, hasSequence: true } : l)),
+        );
+      }
+    } catch {
+      setGen((g) => ({
+        ...g,
+        [leadId]: { error: "Worker injoignable (il se réveille, réessayez)." },
+      }));
+    }
+  }
 
   const odooLink = (id: number) =>
     `${instance}/web#id=${id}&model=crm.lead&view_type=form`;
@@ -78,41 +145,93 @@ export default function LeadsList() {
 
       {!loading && !error && leads.length > 0 && (
         <ul className="divide-y divide-white/5">
-          {leads.map((lead) => (
-            <li key={lead.id}>
-              <a
-                href={odooLink(lead.id)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center justify-between gap-3 py-2.5 transition hover:bg-white/5"
-              >
-                <div className="min-w-0">
-                  <div className="truncate text-sm text-white/90 group-hover:text-white">
-                    {lead.name}
-                  </div>
-                  {lead.contact && (
-                    <div className="truncate text-xs text-white/45">
-                      {lead.contact}
+          {leads.map((lead) => {
+            const state = gen[lead.id] || {};
+            return (
+              <li key={lead.id} className="py-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <a
+                    href={odooLink(lead.id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group min-w-0 flex-1"
+                  >
+                    <div className="truncate text-sm text-white/90 group-hover:text-white">
+                      {lead.name}
+                      <span className="ml-1 text-white/30 transition group-hover:text-white/60">
+                        ↗
+                      </span>
                     </div>
-                  )}
+                    {lead.contact && (
+                      <div className="truncate text-xs text-white/45">
+                        {lead.contact}
+                      </div>
+                    )}
+                  </a>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {lead.hasSequence ? (
+                      <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[11px] text-emerald-300">
+                        séquence ✓
+                      </span>
+                    ) : (
+                      <>
+                        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/50">
+                          à traiter
+                        </span>
+                        <button
+                          onClick={() => generate(lead.id)}
+                          disabled={state.loading}
+                          className="rounded-lg bg-violet-500 px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-violet-400 disabled:opacity-40"
+                        >
+                          {state.loading ? "Génération…" : "Générer la séquence"}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {lead.hasSequence ? (
-                    <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[11px] text-emerald-300">
-                      séquence ✓
+
+                {state.loading && (
+                  <p className="mt-2 text-xs text-white/40">
+                    L’agent lit la fiche et rédige la séquence… (~30 s)
+                  </p>
+                )}
+                {state.error && (
+                  <p className="mt-2 text-xs text-rose-300/80">{state.error}</p>
+                )}
+                {state.skippedReason && (
+                  <div className="mt-2 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200/90">
+                    ⏸️ Pas de relance générée.{" "}
+                    <span className="text-amber-200/70">
+                      {state.skippedReason}
                     </span>
-                  ) : (
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/50">
-                      à traiter
-                    </span>
-                  )}
-                  <span className="text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white/60">
-                    ↗
-                  </span>
-                </div>
-              </a>
-            </li>
-          ))}
+                  </div>
+                )}
+                {state.emails && state.emails.length > 0 && (
+                  <div className="mt-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3">
+                    <div className="mb-2 text-xs text-emerald-300">
+                      ✓ Séquence de {state.emails.length} e-mail
+                      {state.emails.length > 1 ? "s" : ""} écrite dans Odoo.
+                    </div>
+                    <ul className="space-y-1">
+                      {state.emails.map((e, j) => (
+                        <li
+                          key={j}
+                          className="flex items-center justify-between gap-3 text-xs text-white/70"
+                        >
+                          <span className="truncate">{e.subject}</span>
+                          <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/50">
+                            {e.send_offset_days === 0
+                              ? "Jour 0"
+                              : `J+${e.send_offset_days}`}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -128,11 +128,13 @@ async function fetchHistory(config, uid, leadId) {
 }
 
 /**
- * @param {{ dryRun?: boolean, limit?: number }} opts
+ * @param {{ dryRun?: boolean, limit?: number, leadId?: number }} opts
  */
 export async function runFollowupPlanner(opts = {}) {
   const dryRun = opts.dryRun !== false; // sûr par défaut
   const limit = Math.min(Math.max(1, opts.limit || 5), 25);
+  // Cible une opportunité précise (bouton « Générer » d'une fiche). 0 => toutes.
+  const leadId = Number(opts.leadId) > 0 ? Number(opts.leadId) : 0;
 
   const config = getOdooConfig();
   const uid = await authenticate(config);
@@ -149,14 +151,14 @@ export async function runFollowupPlanner(opts = {}) {
   // requête Odoo par `limit` : sinon, avec limit=1 (prévisualisation), on ne
   // verrait que l'opportunité la plus récente — souvent déjà séquencée — et on
   // n'atteindrait jamais celles qui ont réellement besoin d'une relance.
-  const pool = await searchRead(
-    config,
-    uid,
-    LEAD_MODEL,
-    [[MODE_FIELD, "=", MODE_AUTO_FOLLOWUP]],
-    contextFields,
-    { limit: 200, order: "create_date desc" },
-  );
+  // Si `leadId` est fourni, on ne traite que cette fiche.
+  const domain = leadId
+    ? [["id", "=", leadId]]
+    : [[MODE_FIELD, "=", MODE_AUTO_FOLLOWUP]];
+  const pool = await searchRead(config, uid, LEAD_MODEL, domain, contextFields, {
+    limit: leadId ? 1 : 200,
+    order: "create_date desc",
+  });
 
   const sequenced = await leadsWithActiveSequence(
     config,
@@ -235,12 +237,15 @@ export async function runFollowupPlanner(opts = {}) {
       leadId: lead.id,
       name,
       emailsPlanned: rows.length,
+      committed: !dryRun,
       createdIds: dryRun ? undefined : createdIds,
       preview: rows.map((r) => ({
         subject: r.x_studio_nom_mail,
         date: r.x_studio_date_envoi,
       })),
-      emails: dryRun ? sequence.emails : undefined,
+      // On renvoie toujours le contenu généré : en dry-run pour prévisualiser,
+      // en commit pour afficher exactement ce qui vient d'être écrit dans Odoo.
+      emails: sequence.emails,
     });
   }
 
