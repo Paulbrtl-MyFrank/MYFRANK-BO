@@ -56,11 +56,12 @@ export default function PreviewPanel() {
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
       <div className="mb-1 flex items-center gap-2">
         <span className="text-lg">👁️</span>
-        <h2 className="text-sm font-semibold">Prévisualiser la rédaction</h2>
+        <h2 className="text-sm font-semibold">Tester la rédaction</h2>
       </div>
       <p className="mb-3 text-xs text-white/50">
         Génère un exemple de séquence pour 1 opportunité, avec tes consignes
-        actuelles. Aucune écriture dans Odoo.
+        actuelles, sans rien écrire dans Odoo. Pour créer la séquence dans une
+        fiche, utilise « Générer la séquence » dans la liste ci-dessous.
       </p>
 
       <button

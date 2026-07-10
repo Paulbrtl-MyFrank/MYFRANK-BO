@@ -10,6 +10,7 @@
  *       ?async=1           : répond 202 immédiatement et exécute en arrière-plan
  *                            (utilisé par le cron Vercel)
  *       ?limit=<n>         : nombre d'opportunités traitées (défaut 5, max 25)
+ *       ?leadId=<id>       : cible une opportunité précise (bouton d'une fiche)
  */
 
 import express from "express";
@@ -46,11 +47,13 @@ async function handleRun(req, res) {
   const dryRun = !(req.query.commit === "1");
   const isAsync = req.query.async === "1";
   const limit = Number(req.query.limit) || 5;
+  // Optionnel : cible une opportunité précise (bouton « Générer » d'une fiche).
+  const leadId = Number(req.query.leadId) || undefined;
 
   if (isAsync) {
     // Mode cron : on accuse réception tout de suite et on travaille en fond.
     res.status(202).json({ accepted: true, mode: dryRun ? "dry-run" : "commit" });
-    runFollowupPlanner({ dryRun, limit })
+    runFollowupPlanner({ dryRun, limit, leadId })
       .then((r) =>
         console.log(
           `[followup] terminé : ${r.sequencesPlanned} planifiée(s), ${r.skipped} ignorée(s)`,
@@ -60,9 +63,10 @@ async function handleRun(req, res) {
     return;
   }
 
-  // Mode synchrone (test / dry-run manuel) : on renvoie le résultat.
+  // Mode synchrone (test / dry-run manuel, ou génération d'une fiche) : on
+  // renvoie le résultat.
   try {
-    const result = await runFollowupPlanner({ dryRun, limit });
+    const result = await runFollowupPlanner({ dryRun, limit, leadId });
     res.json(result);
   } catch (e) {
     res.status(200).json({ ok: false, error: e?.message || "Erreur inconnue." });
