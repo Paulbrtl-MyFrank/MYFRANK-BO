@@ -250,3 +250,32 @@ export async function writeRecords(
 ): Promise<boolean> {
   return executeKw<boolean>(config, uid, model, "write", [ids, values]);
 }
+
+/** Lit un paramètre de configuration Odoo (ir.config_parameter). */
+export async function getConfigParam(
+  config: OdooConfig,
+  uid: number,
+  key: string,
+): Promise<string> {
+  const value = await executeKw<string | false>(
+    config,
+    uid,
+    "ir.config_parameter",
+    "get_param",
+    [key, ""],
+  );
+  return value || "";
+}
+
+/** Écrit un paramètre de configuration Odoo (ir.config_parameter). */
+export async function setConfigParam(
+  config: OdooConfig,
+  uid: number,
+  key: string,
+  value: string,
+): Promise<unknown> {
+  return executeKw(config, uid, "ir.config_parameter", "set_param", [
+    key,
+    value,
+  ]);
+}

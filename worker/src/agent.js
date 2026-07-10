@@ -30,12 +30,15 @@ de code, au format exact :
 send_offset_days est un entier (le 1er e-mail vaut 0).`;
 
 /**
- * Construit le prompt système. Si la variable d'environnement AGENT_STYLE est
- * définie (dans le dashboard Render), ses consignes sont ajoutées et
- * PRIORITAIRES — c'est le levier de personnalisation du style sans toucher au code.
+ * Construit le prompt système. Les consignes de style peuvent venir (par ordre
+ * de priorité) du paramètre Odoo (édité dans le front Vercel), puis de la
+ * variable d'environnement AGENT_STYLE. Elles sont ajoutées au prompt et
+ * PRIORITAIRES sur les règles par défaut.
  */
-function buildSystemPrompt() {
-  const style = process.env.AGENT_STYLE?.trim();
+function buildSystemPrompt(styleOverride) {
+  const style =
+    (typeof styleOverride === "string" && styleOverride.trim()) ||
+    process.env.AGENT_STYLE?.trim();
   if (!style) return SYSTEM_PROMPT;
   return (
     SYSTEM_PROMPT +
@@ -58,7 +61,7 @@ function extractJson(text) {
   return JSON.parse(s.slice(start, end + 1));
 }
 
-export async function generateFollowupSequence(context) {
+export async function generateFollowupSequence(context, styleOverride) {
   const prompt =
     "Contexte de l'opportunité (JSON) :\n\n" +
     JSON.stringify(context, null, 2) +
@@ -68,7 +71,7 @@ export async function generateFollowupSequence(context) {
   for await (const message of query({
     prompt,
     options: {
-      systemPrompt: buildSystemPrompt(),
+      systemPrompt: buildSystemPrompt(styleOverride),
       model: process.env.AGENT_MODEL || "claude-sonnet-5",
       allowedTools: [], // pas d'outils : simple génération de texte
       // Marge de tours (le SDK compte l'échange complet). Sans outils, la
