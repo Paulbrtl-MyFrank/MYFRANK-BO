@@ -63,7 +63,9 @@ const TOOL = {
 export async function generateFollowupSequence(
   context: Record<string, unknown>,
 ): Promise<SequenceResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  // Nettoie tout espace / retour à la ligne (fréquent lors d'un copier-coller
+  // dans Vercel) : une clé API n'en contient jamais.
+  const apiKey = process.env.ANTHROPIC_API_KEY?.replace(/\s+/g, "");
   if (!apiKey) {
     throw new Error(
       "ANTHROPIC_API_KEY manquant : impossible de générer la séquence.",
