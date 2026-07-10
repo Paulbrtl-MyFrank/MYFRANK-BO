@@ -96,3 +96,12 @@ export function searchRead(config, uid, model, domain = [], fields = [], opts = 
 export function createRecord(config, uid, model, values) {
   return executeKw(config, uid, model, "create", [values]);
 }
+
+/** Lit un paramètre de configuration Odoo (ir.config_parameter). */
+export async function getConfigParam(config, uid, key) {
+  const value = await executeKw(config, uid, "ir.config_parameter", "get_param", [
+    key,
+    "",
+  ]);
+  return value || "";
+}

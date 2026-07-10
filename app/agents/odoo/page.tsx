@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Chat from "./Chat";
 import ConnectionBadge from "./ConnectionBadge";
+import StylePanel from "./StylePanel";
 
 export const metadata = {
   title: "Agent CRM Odoo — MyFrank",
@@ -29,6 +30,10 @@ export default function OdooAgentPage() {
 
       <div className="mb-6">
         <ConnectionBadge />
+      </div>
+
+      <div className="mb-6">
+        <StylePanel />
       </div>
 
       <Chat />

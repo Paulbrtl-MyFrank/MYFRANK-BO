@@ -7,11 +7,15 @@
 import {
   authenticate,
   createRecord,
+  getConfigParam,
   getFields,
   getOdooConfig,
   searchRead,
 } from "./odoo.js";
 import { generateFollowupSequence } from "./agent.js";
+
+// Clé du paramètre Odoo où le front Vercel stocke les consignes de style.
+const STYLE_PARAM_KEY = "myfrank.agent_style";
 
 const LEAD_MODEL = "crm.lead";
 const SCHEDULE_MODEL = "x_ia_email_schedule";
@@ -77,6 +81,9 @@ export async function runFollowupPlanner(opts = {}) {
   const leadFieldSet = new Set(Object.keys(await getFields(config, uid, LEAD_MODEL)));
   const contextFields = LEAD_CONTEXT_FIELDS.filter((f) => leadFieldSet.has(f));
 
+  // Consignes de style éditées depuis le front Vercel (stockées dans Odoo).
+  const style = await getConfigParam(config, uid, STYLE_PARAM_KEY).catch(() => "");
+
   const leads = await searchRead(
     config,
     uid,
@@ -98,7 +105,10 @@ export async function runFollowupPlanner(opts = {}) {
     }
 
     const { id: _id, name, ...context } = lead;
-    const sequence = await generateFollowupSequence({ opportunite: name, ...context });
+    const sequence = await generateFollowupSequence(
+      { opportunite: name, ...context },
+      style,
+    );
 
     const now = new Date();
     const destinataire = Array.isArray(lead.partner_id) ? lead.partner_id[0] : false;
