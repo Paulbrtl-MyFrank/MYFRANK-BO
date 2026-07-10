@@ -98,11 +98,22 @@ function stripHtml(html) {
     .trim();
 }
 
+/** Extrait le domaine (après @) d'une adresse e-mail, en minuscules. */
+function emailDomain(email) {
+  const at = String(email || "").toLowerCase().indexOf("@");
+  return at === -1 ? "" : email.toLowerCase().slice(at + 1).trim();
+}
+
 /**
  * Récupère l'historique des échanges (chatter) d'une opportunité : e-mails et
  * notes, en ordre chronologique, pour que l'agent tienne compte de la relation.
+ * Chaque message est étiqueté "sens" (entrant = du prospect, sortant = de nous)
+ * pour que l'agent identifie clairement qui a dit quoi — et repère un refus.
+ *
+ * @param {string[]} prospectEmails  e-mails connus du prospect (pour le sens)
+ * @param {string}   ourDomain       notre domaine interne (ex. rank-nfc.fr)
  */
-async function fetchHistory(config, uid, leadId) {
+async function fetchHistory(config, uid, leadId, prospectEmails, ourDomain) {
   const rows = await searchRead(
     config,
     uid,
@@ -112,17 +123,34 @@ async function fetchHistory(config, uid, leadId) {
       ["res_id", "=", leadId],
       ["message_type", "in", ["email", "comment"]],
     ],
-    ["date", "author_id", "email_from", "subject", "body"],
-    { limit: 12, order: "date desc" },
+    ["date", "author_id", "email_from", "subject", "body", "message_type"],
+    { limit: 15, order: "date desc" },
   ).catch(() => []);
+
+  const prospects = new Set(
+    (prospectEmails || []).map((e) => String(e || "").toLowerCase().trim()).filter(Boolean),
+  );
+
+  function sensOf(m) {
+    if (m.message_type === "comment") return "note interne";
+    const from = String(m.email_from || "").toLowerCase();
+    // match sur l'e-mail complet du prospect, sinon sur son domaine.
+    for (const p of prospects) {
+      if (p && from.includes(p)) return "entrant";
+    }
+    const dom = emailDomain(from);
+    if (dom && ourDomain && dom !== ourDomain) return "entrant";
+    return "sortant";
+  }
 
   return rows
     .reverse() // ancien -> récent
     .map((m) => ({
       date: m.date,
+      sens: sensOf(m),
       de: Array.isArray(m.author_id) ? m.author_id[1] : m.email_from || "",
       sujet: m.subject || "",
-      message: stripHtml(m.body).slice(0, 800),
+      message: stripHtml(m.body).slice(0, 1200),
     }))
     .filter((m) => m.message);
 }
@@ -174,9 +202,21 @@ export async function runFollowupPlanner(opts = {}) {
   let planned = 0;
   let skipped = sequenced.size;
 
+  // Notre domaine interne (déduit de l'identifiant Odoo), pour distinguer les
+  // messages entrants (prospect) des sortants (nous) dans le chatter.
+  const ourDomain = emailDomain(config.username);
+
   for (const lead of leads) {
+    // E-mails connus du prospect, pour étiqueter le sens des messages.
+    const prospectEmails = [lead.email_from, lead.x_studio_mail].filter(Boolean);
     // Historique des échanges (emails/notes) pour un contexte réaliste.
-    const historique = await fetchHistory(config, uid, lead.id);
+    const historique = await fetchHistory(
+      config,
+      uid,
+      lead.id,
+      prospectEmails,
+      ourDomain,
+    );
 
     // Le transcript de démo peut être volumineux : on le borne.
     if (

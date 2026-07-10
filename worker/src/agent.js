@@ -22,6 +22,11 @@ Règles :
   c'est la réalité de la relation (besoins exprimés, objections, contexte de
   l'établissement). Le CONTENU comme le TIMING doivent en découler — cohérents avec
   ce qui s'est dit, reprenant le fil, sans jamais contredire un échange récent.
+- Chaque message de l'historique porte un champ "sens" : "entrant" = écrit PAR LE
+  PROSPECT, "sortant" = écrit par nous. REGARDE EN PRIORITÉ LE DERNIER MESSAGE
+  ENTRANT (le plus récent du prospect) : c'est lui qui dicte s'il faut relancer,
+  quoi dire et quand. Ne le contredis jamais et n'ignore jamais un refus qui s'y
+  trouve.
 - 2 à 4 e-mails.
 - CADENCE — espace nettement les envois, ne les tasse pas. Par défaut, étale la
   séquence sur ~4 à 6 semaines avec des intervalles qui s'agrandissent
@@ -41,6 +46,13 @@ Règles :
     outil directement opérationnel. Insère le lien de prise de RDV comme un
     hyperlien HTML dont le TEXTE AFFICHÉ (l'ancre) est exactement « mise en place MyFrank » :
     <a href='https://calendar.app.google/LRbtjkhtyyuoJEX47'>mise en place MyFrank</a>.
+  • Ouverture aux parties prenantes — UNIQUEMENT si l'historique/transcript montre
+    que la décision passe par d'autres personnes (propriétaire, associés, siège /
+    groupe, direction, gérant…) ou qu'il a été évoqué d'en discuter avec elles :
+    propose alors explicitement de te rendre disponible pour un échange/point avec
+    ces personnes (ex. « je peux tout à fait organiser un point avec le(s)
+    propriétaire(s) si c'est utile »). N'invente pas de partie prenante si rien ne
+    l'indique.
   Tu peux fusionner ou omettre un axe selon la pertinence ; l'essentiel : chaque
   mail apporte quelque chose de NEUF, adapté au profil.
 - Personnalise avec le contexte réel fourni. N'invente pas de faits ; reste général si l'info manque.
@@ -51,10 +63,15 @@ Règles :
   ligne (utilise des balises <p>/<br>, pas de saut de ligne réel).
 - Signe de façon neutre (ex. « L'équipe MyFrank ») sauf si un commercial est indiqué.
 
-STOP / NE PAS RELANCER : si l'historique montre que le prospect a clairement REFUSÉ,
-demandé d'arrêter, dit qu'il ne souhaite pas avancer maintenant, choisi un autre
-prestataire, ou qu'une relance serait déplacée, alors NE génère PAS de séquence.
-Dans ce cas, réponds à la place avec : {"skip": true, "reason": "<raison courte>"}.
+STOP / NE PAS RELANCER : si le dernier message entrant (ou l'historique) montre que
+le prospect a REFUSÉ ou pris ses distances, alors NE génère PAS de séquence. Cela
+vaut aussi pour les refus POLIS ou implicites, pas seulement les « non » francs :
+« bonne continuation », « merci pour votre suivi » (en clôture), « nous avons déjà
+mis en place / déjà équipés », « ce n'est pas pour nous / pas d'actualité », « pas
+pour le moment » sans date de recontact, choix d'un autre prestataire, ou toute
+formulation où une relance serait déplacée. Dans le doute face à un signal de refus
+clair, ABSTIENS-TOI. Dans ce cas, réponds à la place avec :
+{"skip": true, "reason": "<raison courte>"}.
 
 SORTIE : réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans balises
 de code. Soit une séquence :
